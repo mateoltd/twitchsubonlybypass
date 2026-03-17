@@ -83,9 +83,10 @@ export async function downloadVod(
 ): Promise<{ blob: Blob; extension: string }> {
   onProgress({ phase: "fetching", downloaded: 0, total: 0, bytes: 0 });
 
-  const resp = await fetch(playlistUrl, { signal });
+  const resp = await fetch(proxyUrl(playlistUrl), { signal });
   if (!resp.ok) throw new Error(`Failed to fetch playlist: ${resp.status}`);
   const text = await resp.text();
+  // Pass the original playlistUrl (not proxy) so segment base URLs resolve correctly
   const playlist = parsePlaylist(text, playlistUrl);
 
   const total =
