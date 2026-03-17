@@ -11,12 +11,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const data = await resolveVod(vodId);
-    const playlist = generateMasterPlaylist(vodId, data.qualities);
+    const playlist = generateMasterPlaylist(data.qualities);
 
     return new Response(playlist, {
       headers: {
         "Content-Type": "application/vnd.apple.mpegurl",
-        "Cache-Control": "public, max-age=300",
+        "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
       },
     });
   } catch {

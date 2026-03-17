@@ -25,9 +25,9 @@ export async function resolveVod(vodId: string): Promise<CachedVodData> {
   const probeEntries = Object.entries(defaultResolutions);
 
   const probes = probeEntries.map(async ([key, res]) => {
-    const url = buildPlaylistUrl(urlInfo, vodId, key, vodData.createdAt);
-    const result = await probeQuality(url);
-    return { key, res, result };
+    const playlistUrl = buildPlaylistUrl(urlInfo, vodId, key, vodData.createdAt);
+    const result = await probeQuality(playlistUrl);
+    return { key, res, result, playlistUrl };
   });
 
   const results = await Promise.all(probes);
@@ -36,7 +36,7 @@ export async function resolveVod(vodId: string): Promise<CachedVodData> {
   let bandwidth = 8534030;
   const qualities: ResolvedQuality[] = [];
 
-  for (const { key, res, result } of results) {
+  for (const { key, res, result, playlistUrl } of results) {
     if (result) {
       qualities.push({
         key,
@@ -45,6 +45,7 @@ export async function resolveVod(vodId: string): Promise<CachedVodData> {
         frameRate: res.frameRate,
         bandwidth,
         codec: result.codec,
+        playlistUrl,
       });
       bandwidth -= 100;
     }

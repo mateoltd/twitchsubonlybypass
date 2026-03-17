@@ -152,7 +152,15 @@ export function Player({
     const hls = new Hls({
       enableWorker: true,
       lowLatencyMode: false,
+      capLevelToPlayerSize: true,
+      startLevel: -1,
       backBufferLength: 30,
+      maxBufferLength: 20,
+      maxMaxBufferLength: 40,
+      manifestLoadingMaxRetry: 2,
+      levelLoadingMaxRetry: 3,
+      fragLoadingMaxRetry: 3,
+      capLevelOnFPSDrop: true,
       renderTextTracksNatively: false,
     });
     hlsRef.current = hls;

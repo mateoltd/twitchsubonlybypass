@@ -3,6 +3,44 @@ import { extractVodId } from "@/lib/validation";
 import { resolveVod } from "@/lib/resolve";
 import { isRateLimited } from "@/lib/rate-limit";
 
+function createResolveResponse(data: Awaited<ReturnType<typeof resolveVod>>) {
+  return NextResponse.json(
+    {
+      vodId: data.vodId,
+      channel: data.channel,
+      broadcastType: data.broadcastType,
+      qualities: data.qualities,
+    },
+    {
+      headers: {
+        "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
+      },
+    }
+  );
+}
+
+export async function GET(request: NextRequest) {
+  const vodId = request.nextUrl.searchParams.get("vodId");
+
+  if (!vodId || !/^\d+$/.test(vodId)) {
+    return NextResponse.json(
+      { error: "Missing or invalid vodId" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const data = await resolveVod(vodId);
+    return createResolveResponse(data);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    if (message.includes("not found")) {
+      return NextResponse.json({ error: message }, { status: 404 });
+    }
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -33,12 +71,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const data = await resolveVod(vodId);
-    return NextResponse.json({
-      vodId: data.vodId,
-      channel: data.channel,
-      broadcastType: data.broadcastType,
-      qualities: data.qualities,
-    });
+    return createResolveResponse(data);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     if (message.includes("not found")) {

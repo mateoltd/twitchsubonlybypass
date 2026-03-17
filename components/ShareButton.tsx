@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { IconCheck, IconShare3 } from "@tabler/icons-react";
+import { buildVodPath } from "@/lib/validation";
 
 interface ShareButtonProps {
   vodId: string;
@@ -12,11 +13,7 @@ export function ShareButton({ vodId, currentTime }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
-    const url = new URL(window.location.origin);
-    url.searchParams.set("v", vodId);
-    if (currentTime && currentTime > 0) {
-      url.searchParams.set("t", Math.floor(currentTime).toString());
-    }
+    const url = new URL(buildVodPath(vodId, currentTime), window.location.origin);
 
     try {
       await navigator.clipboard.writeText(url.toString());

@@ -5,6 +5,7 @@ export interface ResolvedQuality {
   frameRate: number;
   bandwidth: number;
   codec: string;
+  playlistUrl: string;
 }
 
 export interface VodResolveResult {
@@ -17,14 +18,33 @@ export interface VodResolveResult {
 export function extractVodId(input: string): string | null {
   const trimmed = input.trim();
 
-  // Bare numeric ID
   if (/^\d+$/.test(trimmed)) return trimmed;
 
-  // URL formats: twitch.tv/videos/123456
-  const urlMatch = trimmed.match(/twitch\.tv\/videos\/(\d+)/);
-  if (urlMatch) return urlMatch[1];
+  const pathMatch = trimmed.match(/(?:^|\/+)videos\/(\d+)(?:[/?#]|$)/i);
+  if (pathMatch) return pathMatch[1];
 
   return null;
+}
+
+export function parseStartTime(value: string | null): number {
+  if (!value) return 0;
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+
+  return Math.floor(parsed);
+}
+
+export function buildVodPath(vodId: string, startTime = 0): string {
+  const params = new URLSearchParams();
+  const normalizedTime = parseStartTime(String(startTime || ""));
+
+  if (normalizedTime > 0) {
+    params.set("t", normalizedTime.toString());
+  }
+
+  const query = params.toString();
+  return query ? `/videos/${vodId}?${query}` : `/videos/${vodId}`;
 }
 
 export function isCloudFrontUrl(url: string): boolean {
