@@ -190,7 +190,7 @@ export function VodApp() {
             </div>
 
             <div
-              className="mb-3 flex items-center justify-between gap-3 px-1 sm:px-0 stagger-child"
+              className="relative z-10 mb-3 flex items-center justify-between gap-3 px-1 sm:px-0 stagger-child"
               style={{ animationDelay: "0.05s" }}
             >
               <VodInfo

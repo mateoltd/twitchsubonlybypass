@@ -53,6 +53,10 @@ export interface DownloadProgress {
 const CONCURRENCY = 6;
 const MAX_RETRIES = 3;
 
+function proxyUrl(url: string): string {
+  return `/api/proxy?url=${encodeURIComponent(url)}`;
+}
+
 async function fetchWithRetry(
   url: string,
   signal: AbortSignal,
@@ -93,7 +97,7 @@ export async function downloadVod(
 
   // Download init segment first if fMP4
   if (playlist.initSegmentUrl) {
-    const buf = await fetchWithRetry(playlist.initSegmentUrl, signal);
+    const buf = await fetchWithRetry(proxyUrl(playlist.initSegmentUrl), signal);
     parts.push(buf);
     bytes += buf.byteLength;
     downloaded++;
@@ -108,7 +112,7 @@ export async function downloadVod(
     while (nextIndex < playlist.segmentUrls.length) {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       const i = nextIndex++;
-      const buf = await fetchWithRetry(playlist.segmentUrls[i], signal);
+      const buf = await fetchWithRetry(proxyUrl(playlist.segmentUrls[i]), signal);
       segmentBuffers[i] = buf;
       bytes += buf.byteLength;
       downloaded++;
