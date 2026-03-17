@@ -1,18 +1,14 @@
-import { MetadataRoute } from "next";
+import type { MetadataRoute } from "next";
+import { getBaseUrl } from "@/lib/seo";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL 
-    ? process.env.NEXT_PUBLIC_BASE_URL 
-    : process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
+  const baseUrl = getBaseUrl();
+  const routes = ["/", "/disclaimer"];
 
-  return [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 1,
-    },
-  ];
+  return routes.map((route) => ({
+    url: new URL(route, baseUrl).toString(),
+    lastModified: new Date(),
+    changeFrequency: route === "/" ? "weekly" : "yearly",
+    priority: route === "/" ? 1 : 0.3,
+  }));
 }

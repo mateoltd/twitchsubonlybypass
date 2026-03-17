@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { IconArrowRight, IconClipboard, IconSearch } from "@tabler/icons-react";
-import { Logo, LogoMark } from "./Logo";
 
 interface VodInputProps {
   onSubmit: (url: string) => void;
@@ -95,8 +94,6 @@ export function VodInput({ onSubmit, disabled, compact }: VodInputProps) {
   return (
     <section className="animate-fade-in">
       <div className="mt-16 flex flex-col items-center sm:mt-24">
-        <Logo size={52} className="mb-8 animate-float text-text sm:mb-10" />
-
         <h1 className="text-center text-[2.5rem] font-bold leading-[1] tracking-[-0.035em] text-text sm:text-5xl lg:text-[4.5rem]">
           Watch Twitch VODs
         </h1>

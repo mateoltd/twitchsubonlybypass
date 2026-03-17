@@ -170,7 +170,10 @@ export function VodApp() {
 
           <footer className="px-5 pb-4 text-center sm:px-8">
             <p className="text-[11px] text-text-tertiary/40">
-              Not affiliated with Twitch. For educational purposes only.
+              Not affiliated with Twitch. For authorized use only.{" "}
+              <a href="/disclaimer" className="underline transition-colors hover:text-text-tertiary">
+                Legal disclaimer
+              </a>
             </p>
           </footer>
         </div>
@@ -221,7 +224,10 @@ export function VodApp() {
 
             <footer className="mt-8 pb-4 text-center">
               <p className="text-[11px] text-text-tertiary/40">
-                Not affiliated with Twitch. For educational purposes only.
+                Not affiliated with Twitch. For authorized use only.{" "}
+                <a href="/disclaimer" className="underline transition-colors hover:text-text-tertiary">
+                  Legal disclaimer
+                </a>
               </p>
             </footer>
           </div>

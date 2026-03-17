@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Sora } from "next/font/google";
+import { getBaseUrl, siteConfig } from "@/lib/seo";
 import "./globals.css";
 
 const sora = Sora({
@@ -14,50 +15,36 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Phantom Twitch — Watch Sub-Only Twitch VODs Unrestricted",
+    default: "Phantom Twitch — Watch & Download Sub-Only Twitch VODs",
     template: "%s | Phantom Twitch",
   },
-  description:
-    "Watch any Twitch VOD without restrictions, including sub-only content. A modern, fast, and secure web player for Twitch VODs with adaptive quality.",
-  keywords: [
-    "twitch sub-only bypass",
-    "watch twitch vods",
-    "twitch vod player",
-    "phantom twitch",
-    "twitch restricted vods",
-    "twitch vod downloader",
-    "sub-only vod bypass",
-  ],
+  description: siteConfig.description,
+  applicationName: siteConfig.name,
+  keywords: siteConfig.keywords,
   authors: [{ name: "mateoltd", url: "https://github.com/mateoltd" }],
-  creator: "mateoltd",
-  publisher: "Phantom Research",
+  creator: siteConfig.creator,
+  publisher: siteConfig.publisher,
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
-  metadataBase: process.env.NEXT_PUBLIC_BASE_URL 
-    ? new URL(process.env.NEXT_PUBLIC_BASE_URL) 
-    : process.env.VERCEL_URL 
-      ? new URL(`https://${process.env.VERCEL_URL}`)
-      : new URL("http://localhost:3000"),
+  metadataBase: getBaseUrl(),
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "Phantom Twitch — Watch Sub-Only Twitch VODs Unrestricted",
-    description:
-      "Watch any Twitch VOD without restrictions, including sub-only content. Modern web player with adaptive quality.",
+    title: "Phantom Twitch — Watch & Download Sub-Only Twitch VODs",
+    description: siteConfig.description,
     url: "/",
-    siteName: "Phantom Twitch",
+    siteName: siteConfig.name,
     locale: "en_US",
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Phantom Twitch — Watch Sub-Only Twitch VODs Unrestricted",
-    description:
-      "Watch any Twitch VOD without restrictions, including sub-only content. Modern web player with adaptive quality.",
+    card: "summary",
+    title: "Phantom Twitch — Watch & Download Sub-Only Twitch VODs",
+    description: siteConfig.description,
     creator: "@mateoltd",
   },
   robots: {
