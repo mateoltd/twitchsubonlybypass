@@ -1,0 +1,232 @@
+@import "tailwindcss";
+
+@theme {
+  --color-phantom: #7b8faf;
+  --color-phantom-light: #95a7c3;
+  --color-phantom-dark: #5e7291;
+  --color-phantom-soft: #adbdd6;
+  --color-phantom-deep: #47597a;
+
+  --color-bg: #0a0a0c;
+  --color-surface: #121215;
+  --color-surface-light: #1a1a1e;
+  --color-surface-hover: #222228;
+  --color-border: #2a2a32;
+
+  --color-text: #ededf0;
+  --color-text-secondary: #a8a8b3;
+  --color-text-tertiary: #5c5c6b;
+
+  --color-error: #e87070;
+  --color-success: #70e0a3;
+
+  --font-sans: var(--font-sora), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --animate-fade-in: fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-slide-up: slide-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-float: float 7s ease-in-out infinite;
+}
+
+/* ── Keyframes ── */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes progress-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Base ── */
+
+html {
+  background: var(--color-bg);
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(123, 143, 175, 0.04), transparent 70%),
+    var(--color-bg);
+  color: var(--color-text);
+}
+
+button, input, video {
+  font: inherit;
+}
+
+/* ── Panels ── */
+
+.panel-soft {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(18, 18, 21, 0.8);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.panel-subtle {
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ── Player container ── */
+
+.player-shell {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #000;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Inputs & buttons ── */
+
+.soft-input {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--color-text);
+}
+
+.soft-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.soft-input:focus-visible,
+.soft-btn:focus-visible {
+  outline: 2px solid rgba(123, 143, 175, 0.4);
+  outline-offset: 2px;
+}
+
+.soft-btn {
+  border: none;
+  background: var(--color-phantom);
+  color: white;
+}
+
+/* ── Player control buttons ── */
+
+.ctrl-btn {
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.ctrl-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ctrl-btn:active {
+  transform: scale(0.96);
+}
+
+/* ── Slider styles ── */
+
+.range-accent,
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+  cursor: pointer;
+}
+
+.range-accent::-webkit-slider-thumb,
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  border: 2px solid white;
+  background: var(--color-phantom);
+  box-shadow: 0 1px 6px rgba(123, 143, 175, 0.25);
+}
+
+.range-accent::-moz-range-thumb,
+.volume-slider::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  border: 2px solid white;
+  background: var(--color-phantom);
+  box-shadow: 0 1px 6px rgba(123, 143, 175, 0.25);
+}
+
+.range-accent::-moz-range-track,
+.volume-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ── Stagger animation helper ── */
+
+.stagger-child {
+  animation: stagger-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Misc ── */
+
+::selection {
+  background: rgba(123, 143, 175, 0.2);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@media (pointer: coarse) {
+  .range-accent::-webkit-slider-thumb,
+  .volume-slider::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+  }
+
+  .range-accent::-moz-range-thumb,
+  .volume-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+  }
+}
