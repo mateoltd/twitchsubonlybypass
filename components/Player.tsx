@@ -12,8 +12,8 @@ import {
   IconPlayerPauseFilled,
   IconPlayerPlayFilled,
   IconSettings,
+  IconVolume,
   IconVolume2,
-  IconVolume3,
   IconVolumeOff,
 } from "@tabler/icons-react";
 import { formatTime } from "@/lib/format";
@@ -571,7 +571,7 @@ export function Player({
 
       {loading && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="rounded-full border border-white/10 bg-black/60 px-4 py-2 font-mono text-xs uppercase tracking-[0.22em] text-text backdrop-blur-md">
+          <div className="rounded-full border border-white/10 bg-black/60 px-4 py-2 font-sans text-xs uppercase tracking-[0.22em] text-text backdrop-blur-md">
             Buffering
           </div>
         </div>
@@ -579,8 +579,8 @@ export function Player({
 
       {!playing && !loading && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-phantom to-phantom-dark text-white shadow-[0_12px_30px_rgba(123,143,175,0.3)]">
-            <IconPlayerPlayFilled size={20} />
+          <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-gradient-to-br from-phantom to-phantom-dark text-white">
+            <IconPlayerPlayFilled size={26} />
           </div>
         </div>
       )}
@@ -616,7 +616,7 @@ export function Player({
             </MobileGroup>
 
             <div>
-              <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.22em] text-text-tertiary">
+              <div className="mb-2 font-sans text-[11px] uppercase tracking-[0.22em] text-text-tertiary">
                 Volume
               </div>
               <input
@@ -646,7 +646,7 @@ export function Player({
         <div className="relative px-2.5 pb-2 sm:px-4 sm:pb-4">
           <div
             ref={progressRef}
-            className="relative mb-2 sm:mb-3 h-2.5 cursor-pointer rounded-full bg-white/12"
+            className="relative mb-2 sm:mb-3 h-1.5 cursor-pointer rounded-full bg-white/12"
             onMouseDown={onProgressDown}
             onTouchStart={onProgressDown}
             onMouseMove={(event) =>
@@ -668,13 +668,13 @@ export function Player({
               style={{ width: `${progress}%` }}
             />
             <div
-              className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-phantom shadow-[0_8px_20px_rgba(123,143,175,0.3)]"
+              className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-phantom"
               style={{ left: `${progress}%` }}
             />
 
             {hoverProgress !== null && (
               <div
-                className="absolute bottom-full mb-2 -translate-x-1/2 rounded-full bg-black/80 px-2.5 py-1 font-mono text-xs text-white backdrop-blur-sm"
+                className="absolute bottom-full mb-2 -translate-x-1/2 rounded-full bg-black/80 px-2.5 py-1 font-sans text-xs text-white backdrop-blur-sm"
                 style={{ left: `${hoverProgress * 100}%` }}
               >
                 {formatTime(hoverProgress * duration)}
@@ -682,7 +682,7 @@ export function Player({
             )}
           </div>
 
-          <div className="mb-1.5 sm:mb-3 flex items-center justify-between gap-3 font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.16em] text-text-secondary">
+          <div className="mb-1.5 sm:mb-3 flex items-center justify-between gap-3 font-sans text-[10px] sm:text-[11px] uppercase tracking-[0.16em] text-text-secondary">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
@@ -698,10 +698,10 @@ export function Player({
               </ControlBtn>
               <ControlBtn onClick={() => seekBy(-10)} label="Back 10 seconds">
                 <IconChevronLeft size={18} />
-                <span className="font-mono text-[11px]">10</span>
+                <span className="font-sans text-[11px]">10</span>
               </ControlBtn>
               <ControlBtn onClick={() => seekBy(10)} label="Forward 10 seconds">
-                <span className="font-mono text-[11px]">10</span>
+                <span className="font-sans text-[11px]">10</span>
                 <IconChevronRight size={18} />
               </ControlBtn>
             </div>
@@ -713,7 +713,7 @@ export function Player({
                 ) : volume < 0.5 ? (
                   <IconVolume2 size={18} />
                 ) : (
-                  <IconVolume3 size={18} />
+                  <IconVolume size={18} />
                 )}
               </ControlBtn>
               <input
@@ -808,7 +808,7 @@ export function Player({
                   ) : volume < 0.5 ? (
                     <IconVolume2 size={18} />
                   ) : (
-                    <IconVolume3 size={18} />
+                    <IconVolume size={18} />
                   )}
                 </ControlBtn>
                 <ControlBtn
@@ -930,7 +930,7 @@ function MobileGroup({
 }) {
   return (
     <div>
-      <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.22em] text-text-tertiary">
+      <div className="mb-2 font-sans text-[11px] uppercase tracking-[0.22em] text-text-tertiary">
         {title}
       </div>
       <div className="flex flex-wrap gap-2">{children}</div>

@@ -167,7 +167,7 @@ button, input, video {
   border-radius: 999px;
   border: 2px solid white;
   background: var(--color-phantom);
-  box-shadow: 0 1px 6px rgba(123, 143, 175, 0.25);
+  box-shadow: none;
 }
 
 .range-accent::-moz-range-thumb,
@@ -177,7 +177,7 @@ button, input, video {
   border-radius: 999px;
   border: 2px solid white;
   background: var(--color-phantom);
-  box-shadow: 0 1px 6px rgba(123, 143, 175, 0.25);
+  box-shadow: none;
 }
 
 .range-accent::-moz-range-track,
