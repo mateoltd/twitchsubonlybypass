@@ -180,7 +180,7 @@ export function VodApp() {
         <div className="min-h-screen animate-fade-in">
           <Navbar />
 
-          <div className="mx-auto max-w-5xl px-2 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-5xl px-2 sm:px-6 lg:max-w-[70vw] lg:px-8">
             <div className="mb-5 px-1 sm:px-0 animate-slide-up">
               <VodInput onSubmit={navigateToVod} disabled={false} compact={true} />
             </div>
@@ -203,6 +203,9 @@ export function VodApp() {
                 startTime={startTime}
                 onTimeUpdate={setPlayerTime}
               />
+              <p className="mt-2 text-center text-[11px] text-text-tertiary/50 sm:hidden">
+                Use fullscreen for the best viewing experience
+              </p>
             </div>
 
             <div

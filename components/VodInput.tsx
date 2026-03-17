@@ -82,9 +82,7 @@ export function VodInput({ onSubmit, disabled, compact }: VodInputProps) {
           disabled={disabled || !value.trim()}
           className="flex shrink-0 items-center gap-1.5 rounded-lg bg-phantom px-3.5 py-2 text-[13px] font-semibold text-white transition-all hover:bg-phantom-dark active:scale-[0.97] disabled:opacity-30"
         >
-          <span className="hidden sm:inline">
-            {disabled ? "Resolving" : "Go"}
-          </span>
+          {disabled ? "Resolving" : "Go"}
         </button>
       </form>
     );
@@ -139,7 +137,7 @@ export function VodInput({ onSubmit, disabled, compact }: VodInputProps) {
               disabled={disabled}
               autoFocus
               style={{ caretColor: "transparent" }}
-              className="w-full bg-transparent py-1 text-3xl font-medium tracking-tight text-text placeholder:text-text-tertiary/40 outline-none sm:text-5xl"
+              className="w-full bg-transparent py-1 text-3xl font-medium tracking-tight text-text placeholder:text-text-tertiary/90 outline-none sm:text-5xl"
             />
           </div>
 

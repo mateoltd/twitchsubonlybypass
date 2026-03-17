@@ -552,7 +552,7 @@ export function Player({
   return (
     <div
       ref={containerRef}
-      className={`player-shell relative aspect-video w-full overflow-hidden rounded-lg sm:rounded-2xl select-none ${
+      className={`player-shell relative aspect-video min-h-[45vh] w-full overflow-hidden rounded-lg sm:min-h-0 sm:rounded-2xl select-none ${
         !controlsVisible && playing ? "cursor-none" : ""
       }`}
       onMouseMove={showControls}
