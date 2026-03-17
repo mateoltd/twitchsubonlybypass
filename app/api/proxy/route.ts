@@ -28,11 +28,18 @@ export async function GET(request: NextRequest) {
     return new Response("Upstream error", { status: upstream.status });
   }
 
+  // Segments have versioned URLs (content-addressed) — safe to cache aggressively.
+  // Playlists can change, so use a short TTL.
+  const isSegment = !parsed.pathname.endsWith(".m3u8");
+  const cacheControl = isSegment
+    ? "public, max-age=86400, immutable"
+    : "public, max-age=300";
+
   return new Response(upstream.body, {
     headers: {
       "Content-Type":
         upstream.headers.get("Content-Type") ?? "application/octet-stream",
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": cacheControl,
     },
   });
 }

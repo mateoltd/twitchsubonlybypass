@@ -2,11 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconDownload, IconX } from "@tabler/icons-react";
-import {
-  downloadVod,
-  triggerDownload,
-  type DownloadProgress,
-} from "@/lib/download";
+import { downloadVod, type DownloadProgress } from "@/lib/download";
 
 interface Quality {
   key: string;
@@ -71,8 +67,9 @@ export function DownloadButton({
       });
 
       try {
-        const { blob, extension } = await downloadVod(
+        await downloadVod(
           quality.playlistUrl,
+          `${channel}_${vodId}_${quality.key}`,
           (progress) => {
             setState((prev) =>
               prev.status === "downloading" ? { ...prev, progress } : prev
@@ -80,9 +77,6 @@ export function DownloadButton({
           },
           controller.signal
         );
-
-        const filename = `${channel}_${vodId}_${quality.key}.${extension}`;
-        triggerDownload(blob, filename);
         setState({ status: "idle" });
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") {
