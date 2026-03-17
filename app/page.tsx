@@ -120,6 +120,7 @@ export default function Home() {
           <Navbar />
 
           <div className="mx-auto w-full max-w-5xl flex-1 px-4 sm:px-6 lg:px-8">
+            <h1 className="sr-only">Phantom Twitch - Watch Sub-Only Twitch VODs</h1>
             <VodInput
               onSubmit={submitHandler}
               disabled={state === "loading"}
