@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import { History, addToHistory } from "@/components/History";
 import { Player } from "@/components/Player";
+import { DownloadButton } from "@/components/DownloadButton";
 import { ShareButton } from "@/components/ShareButton";
 import { VodInfo } from "@/components/VodInfo";
 import { VodInput } from "@/components/VodInput";
@@ -196,7 +197,14 @@ export function VodApp() {
                 channel={vodData.channel}
                 broadcastType={vodData.broadcastType}
               />
-              <ShareButton vodId={vodData.vodId} currentTime={playerTime} />
+              <div className="flex items-center gap-2">
+                <DownloadButton
+                  qualities={vodData.qualities}
+                  channel={vodData.channel}
+                  vodId={vodData.vodId}
+                />
+                <ShareButton vodId={vodData.vodId} currentTime={playerTime} />
+              </div>
             </div>
 
             <div className="stagger-child" style={{ animationDelay: "0.1s" }}>
