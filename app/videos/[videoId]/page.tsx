@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import { DebugVideoScript } from "@/components/DebugVideoScript";
 import { VodApp } from "@/components/VodApp";
+import { isDebugEnabled } from "@/lib/debug";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -10,9 +12,14 @@ export const metadata = buildMetadata({
 });
 
 export default function VideoPage() {
+  const debugEnabled = isDebugEnabled();
+
   return (
-    <Suspense>
-      <VodApp />
-    </Suspense>
+    <>
+      {debugEnabled && <DebugVideoScript />}
+      <Suspense>
+        <VodApp />
+      </Suspense>
+    </>
   );
 }

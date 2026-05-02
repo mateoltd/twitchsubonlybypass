@@ -1,6 +1,8 @@
 import { Suspense } from "react";
+import { DebugVideoScript } from "@/components/DebugVideoScript";
 import { VodApp } from "@/components/VodApp";
 import { StructuredData } from "@/components/structured-data";
+import { isDebugEnabled } from "@/lib/debug";
 import { buildMetadata, getBaseUrl, siteConfig } from "@/lib/seo";
 
 export const metadata = buildMetadata({
@@ -19,6 +21,7 @@ export const metadata = buildMetadata({
 
 export default function Home() {
   const baseUrl = getBaseUrl().toString();
+  const debugEnabled = isDebugEnabled();
 
   return (
     <>
@@ -84,6 +87,7 @@ export default function Home() {
           ],
         }}
       />
+      {debugEnabled && <DebugVideoScript />}
       <Suspense>
         <VodApp />
       </Suspense>

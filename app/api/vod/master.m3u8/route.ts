@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { debugServer } from "@/lib/debug";
 import { resolveVod } from "@/lib/resolve";
 import { generateMasterPlaylist } from "@/lib/playlist";
 
@@ -11,15 +12,20 @@ export async function GET(request: NextRequest) {
 
   try {
     const data = await resolveVod(vodId);
-    const playlist = generateMasterPlaylist(data.qualities);
+    debugServer("master.m3u8", "serving master playlist", {
+      vodId,
+      qualityKeys: data.qualities.map((quality) => quality.key),
+    });
+    const playlist = generateMasterPlaylist(vodId, data.qualities);
 
     return new Response(playlist, {
       headers: {
         "Content-Type": "application/vnd.apple.mpegurl",
-        "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
+        "Cache-Control": "no-store",
       },
     });
   } catch {
+    debugServer("master.m3u8", "failed to resolve vod", { vodId });
     return new Response("VOD not found", { status: 404 });
   }
 }
