@@ -45,6 +45,12 @@ A modern web application to watch sub-only VODs on Twitch with full feature supp
 - **Player**: [hls.js](https://github.com/video-dev/hls.js/)
 - **Icons**: [Tabler Icons](https://tabler-icons.io/)
 
+## Serverless Costs
+
+Playback and downloads resolve playlists through the app, and completed VOD segments are fetched directly from Twitch/CDN origins by the browser when CORS allows it.
+
+Growing/live-archive VOD segments may be proxied because some Twitch CDN segment hosts do not expose browser CORS headers. That path can increase origin transfer on serverless deployments.
+
 ## License
 
 MIT License - Copyright (c) 2026 mateoltd

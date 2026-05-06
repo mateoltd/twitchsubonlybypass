@@ -15,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Phantom Twitch — Watch & Download Sub-Only Twitch VODs",
+    default: "Phantom Twitch - Twitch Live and VOD Client",
     template: "%s | Phantom Twitch",
   },
   description: siteConfig.description,
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "Phantom Twitch — Watch & Download Sub-Only Twitch VODs",
+    title: "Phantom Twitch - Twitch Live and VOD Client",
     description: siteConfig.description,
     url: "/",
     siteName: siteConfig.name,
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "Phantom Twitch — Watch & Download Sub-Only Twitch VODs",
+    title: "Phantom Twitch - Twitch Live and VOD Client",
     description: siteConfig.description,
     creator: "@mateoltd",
   },

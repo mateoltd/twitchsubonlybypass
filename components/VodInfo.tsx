@@ -3,9 +3,10 @@ import { IconBroadcast, IconFlame, IconUpload } from "@tabler/icons-react";
 interface VodInfoProps {
   channel: string;
   broadcastType: string;
+  title?: string;
 }
 
-export function VodInfo({ channel, broadcastType }: VodInfoProps) {
+export function VodInfo({ channel, broadcastType, title }: VodInfoProps) {
   const typeLabel =
     broadcastType === "highlight"
       ? "Highlight"
@@ -27,11 +28,11 @@ export function VodInfo({ channel, broadcastType }: VodInfoProps) {
       </div>
       <div className="min-w-0">
         <div className="truncate text-[14px] font-semibold tracking-tight text-text">
-          {channel}
+          {title || channel}
         </div>
         <div className="flex items-center gap-1 text-[11px] text-text-tertiary">
           <Icon size={11} stroke={2} />
-          {typeLabel}
+          {channel} · {typeLabel}
         </div>
       </div>
     </div>

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     return new Response(playlist, {
       headers: {
         "Content-Type": "application/vnd.apple.mpegurl",
-        "Cache-Control": "no-store",
+        "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
       },
     });
   } catch {

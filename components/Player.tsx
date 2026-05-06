@@ -31,6 +31,8 @@ interface PlayerProps {
   src: string;
   qualities: Quality[];
   startTime?: number;
+  isLive?: boolean;
+  dvrMode?: boolean;
   onTimeUpdate?: (time: number) => void;
 }
 
@@ -40,8 +42,13 @@ export function Player({
   src,
   qualities,
   startTime = 0,
+  isLive = false,
+  dvrMode = false,
   onTimeUpdate,
 }: PlayerProps) {
+  const debugVideo =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("debug") === "1";
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -50,10 +57,13 @@ export function Player({
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seekFrameRef = useRef<number | null>(null);
   const pendingSeekRef = useRef<number | null>(null);
+  const levelsSyncedRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [seekableStart, setSeekableStart] = useState(0);
+  const [seekableEnd, setSeekableEnd] = useState(0);
   const [buffered, setBuffered] = useState(0);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
@@ -85,10 +95,13 @@ export function Player({
 
   const clampTime = useCallback(
     (time: number) => {
+      if (isLive && seekableEnd > seekableStart) {
+        return Math.max(seekableStart, Math.min(time, seekableEnd));
+      }
       if (!Number.isFinite(duration) || duration <= 0) return Math.max(0, time);
       return Math.max(0, Math.min(time, duration));
     },
-    [duration]
+    [duration, isLive, seekableEnd, seekableStart]
   );
 
   const commitSeek = useCallback(
@@ -126,14 +139,28 @@ export function Player({
     video.disableRemotePlayback = true;
 
     const onLoadedMetadata = () => {
-      if (startTime > 0) {
+      if (!isLive && startTime > 0) {
         video.currentTime = startTime;
         syncDisplayedTime(startTime);
       }
       setLoading(false);
     };
 
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    if (debugVideo) {
+      console.info("[phantom-hls] player init", {
+        src,
+        isLive,
+        dvrMode,
+        hlsSupported: Hls.isSupported(),
+        nativeHls: video.canPlayType("application/vnd.apple.mpegurl"),
+        providedQualities: qualities.map((quality) => quality.name),
+      });
+    }
+
+    if (!Hls.isSupported()) {
+      if (debugVideo) {
+        console.info("[phantom-hls] using native hls fallback");
+      }
       video.src = src;
       video.addEventListener("loadedmetadata", onLoadedMetadata);
       return () => {
@@ -144,19 +171,14 @@ export function Player({
       };
     }
 
-    if (!Hls.isSupported()) {
-      setLoading(false);
-      return;
-    }
-
     const hls = new Hls({
       enableWorker: true,
-      lowLatencyMode: false,
+      lowLatencyMode: isLive,
       capLevelToPlayerSize: true,
-      startLevel: -1,
-      backBufferLength: 30,
-      maxBufferLength: 20,
-      maxMaxBufferLength: 40,
+      startLevel: isLive ? 0 : -1,
+      backBufferLength: isLive ? 15 : 30,
+      maxBufferLength: isLive ? 8 : 20,
+      maxMaxBufferLength: isLive ? 20 : 40,
       manifestLoadingMaxRetry: 2,
       levelLoadingMaxRetry: 3,
       fragLoadingMaxRetry: 3,
@@ -164,30 +186,91 @@ export function Player({
       renderTextTracksNatively: false,
     });
     hlsRef.current = hls;
+    levelsSyncedRef.current = false;
 
-    hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+    const syncLevels = (sourceLevels = hls.levels) => {
       const hevcSupported =
         typeof MediaSource !== "undefined" &&
         MediaSource.isTypeSupported('video/mp4; codecs="hev1.1.6.L93.B0"');
 
-      const filteredLevels = data.levels
+      const filteredLevels = sourceLevels
         .map((level, index) => {
           const quality = qualities[index];
           if (quality?.codec?.startsWith("hev1") && !hevcSupported) return null;
-          return { name: quality?.name ?? `${level.height}p`, index };
+          const frameRate = level.frameRate ? Math.round(level.frameRate) : 0;
+          const fallbackName = level.height
+            ? `${level.height}p${frameRate >= 50 ? frameRate : ""}`
+            : level.name || `Level ${index + 1}`;
+          return { name: quality?.name ?? fallbackName, index };
         })
         .filter((level): level is NonNullable<typeof level> => level !== null);
 
       setLevels(filteredLevels);
-      setCurrentLevel(-1);
-      if (startTime > 0) {
+      levelsSyncedRef.current = filteredLevels.length > 0;
+      if (isLive && filteredLevels.length > 0) {
+        const firstLevel = filteredLevels[0].index;
+        hls.currentLevel = firstLevel;
+        hls.nextLevel = firstLevel;
+        hls.loadLevel = firstLevel;
+        setCurrentLevel(firstLevel);
+      } else {
+        setCurrentLevel(-1);
+      }
+    };
+
+    hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+      if (debugVideo) {
+        console.info("[phantom-hls] manifest parsed", {
+          isLive,
+          levels: data.levels.map((level) => ({
+            name: level.name,
+            width: level.width,
+            height: level.height,
+            frameRate: level.frameRate,
+            bitrate: level.bitrate,
+            url: level.url?.[0],
+          })),
+        });
+      }
+      syncLevels(data.levels.length > 0 ? data.levels : hls.levels);
+      if (!isLive && startTime > 0) {
         video.currentTime = startTime;
         syncDisplayedTime(startTime);
       }
       setLoading(false);
     });
 
+    hls.on(Hls.Events.LEVEL_LOADED, (_, data) => {
+      if (!levelsSyncedRef.current && hls.levels.length > 0) {
+        syncLevels();
+      }
+
+      if (dvrMode && data.details.live && data.details.fragments.length > 0) {
+        const first = data.details.fragments[0];
+        const last = data.details.fragments[data.details.fragments.length - 1];
+        const start = first.start;
+        const end = last.start + last.duration;
+        if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+          if (debugVideo) {
+            console.info("[phantom-hls] live window", {
+              isLive,
+              level: data.level,
+              fragments: data.details.fragments.length,
+              start,
+              end,
+              duration: end - start,
+            });
+          }
+          setSeekableStart(start);
+          setSeekableEnd(end);
+        }
+      }
+    });
+
     hls.on(Hls.Events.ERROR, (_, data) => {
+      if (debugVideo) {
+        console.warn("[phantom-hls] error", data);
+      }
       if (!data.fatal) return;
       if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
         hls.startLoad();
@@ -209,7 +292,7 @@ export function Player({
       video.removeAttribute("src");
       video.load();
     };
-  }, [qualities, src, startTime, syncDisplayedTime]);
+  }, [debugVideo, dvrMode, isLive, qualities, src, startTime, syncDisplayedTime]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -220,8 +303,20 @@ export function Player({
       setPlaying(false);
       setControlsVisible(true);
     };
+    const updateSeekable = () => {
+      const ranges = video.seekable;
+      if (ranges.length === 0) {
+        setSeekableStart(0);
+        setSeekableEnd(0);
+        return;
+      }
+
+      setSeekableStart(ranges.start(0));
+      setSeekableEnd(ranges.end(ranges.length - 1));
+    };
     const onTime = () => {
       if (dragging) return;
+      updateSeekable();
       const actualTime = video.currentTime;
       if (
         pendingSeekRef.current !== null &&
@@ -231,11 +326,15 @@ export function Player({
       }
       syncDisplayedTime(actualTime);
     };
-    const onDurationChange = () => setDuration(video.duration || 0);
+    const onDurationChange = () => {
+      setDuration(video.duration || 0);
+      updateSeekable();
+    };
     const onProgress = () => {
       if (video.buffered.length > 0) {
         setBuffered(video.buffered.end(video.buffered.length - 1));
       }
+      updateSeekable();
     };
     const onVolumeChange = () => {
       setVolume(video.volume);
@@ -243,11 +342,15 @@ export function Player({
     };
     const onWaiting = () => setLoading(true);
     const onCanPlay = () => setLoading(false);
-    const onPlaying = () => setLoading(false);
+    const onPlaying = () => {
+      setLoading(false);
+      updateSeekable();
+    };
     const onRateChange = () => setSpeed(video.playbackRate);
     const onSeeked = () => {
       pendingSeekRef.current = null;
       setLoading(false);
+      updateSeekable();
       syncDisplayedTime(video.currentTime);
     };
     const onEnded = () => {
@@ -334,6 +437,12 @@ export function Player({
     [commitSeek, currentTime, showControls]
   );
 
+  const seekToLive = useCallback(() => {
+    if (seekableEnd <= seekableStart) return;
+    commitSeek(seekableEnd - 1);
+    showControls();
+  }, [commitSeek, seekableEnd, seekableStart, showControls]);
+
   const changeVolume = useCallback((nextVolume: number) => {
     const video = videoRef.current;
     if (!video) return;
@@ -398,6 +507,8 @@ export function Player({
     return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
   }, []);
 
+  const dvrWindow = Math.max(0, seekableEnd - seekableStart);
+
   const onProgressDown = useCallback(
     (event: React.MouseEvent | React.TouchEvent) => {
       event.preventDefault();
@@ -406,9 +517,13 @@ export function Player({
 
       const clientX = "touches" in event ? event.touches[0].clientX : event.clientX;
       const nextProgress = getProgressFromClientX(clientX);
-      syncDisplayedTime(nextProgress * duration);
+      syncDisplayedTime(
+        isLive
+          ? seekableStart + nextProgress * dvrWindow
+          : nextProgress * duration
+      );
     },
-    [duration, getProgressFromClientX, showControls, syncDisplayedTime]
+    [duration, dvrWindow, getProgressFromClientX, isLive, seekableStart, showControls, syncDisplayedTime]
   );
 
   useEffect(() => {
@@ -417,14 +532,22 @@ export function Player({
     const onMove = (event: MouseEvent | TouchEvent) => {
       const clientX = "touches" in event ? event.touches[0].clientX : event.clientX;
       const nextProgress = getProgressFromClientX(clientX);
-      syncDisplayedTime(nextProgress * duration);
+      syncDisplayedTime(
+        isLive
+          ? seekableStart + nextProgress * dvrWindow
+          : nextProgress * duration
+      );
     };
 
     const onUp = (event: MouseEvent | TouchEvent) => {
       const clientX =
         "changedTouches" in event ? event.changedTouches[0].clientX : event.clientX;
       const nextProgress = getProgressFromClientX(clientX);
-      commitSeek(nextProgress * duration);
+      commitSeek(
+        isLive
+          ? seekableStart + nextProgress * dvrWindow
+          : nextProgress * duration
+      );
       setDragging(false);
     };
 
@@ -439,7 +562,7 @@ export function Player({
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onUp);
     };
-  }, [commitSeek, dragging, duration, getProgressFromClientX, syncDisplayedTime]);
+  }, [commitSeek, dragging, duration, dvrWindow, getProgressFromClientX, isLive, seekableStart, syncDisplayedTime]);
 
   const onVideoClick = useCallback(() => {
     if (clickTimer.current) {
@@ -546,8 +669,22 @@ export function Player({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [menuOpen]);
 
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const bufferProgress = duration > 0 ? (buffered / duration) * 100 : 0;
+  const liveWindow = dvrWindow;
+  const useDvrTimeline =
+    dvrMode && dvrWindow > 1 && (isLive || !Number.isFinite(duration) || duration <= 0);
+  const hasTimeline =
+    (!isLive && Number.isFinite(duration) && duration > 0) ||
+    useDvrTimeline;
+  const timelineDuration = useDvrTimeline ? dvrWindow : duration;
+  const timelineTime = useDvrTimeline
+    ? Math.max(0, Math.min(currentTime - seekableStart, liveWindow))
+    : currentTime;
+  const progress = hasTimeline ? (timelineTime / timelineDuration) * 100 : 0;
+  const bufferProgress =
+    hasTimeline && !useDvrTimeline ? (buffered / timelineDuration) * 100 : 0;
+  const liveLag =
+    useDvrTimeline && seekableEnd > 0 ? Math.max(0, seekableEnd - currentTime) : 0;
+  const canSeek = !isLive || liveWindow > 1;
 
   return (
     <div
@@ -596,17 +733,19 @@ export function Player({
       {menuOpen === "mobile" && (
         <div className="panel-soft absolute inset-x-2 bottom-20 z-20 rounded-2xl p-3 sm:hidden">
           <div className="grid gap-4">
-            <MobileGroup title="Speed">
-              {SPEEDS.map((value) => (
-                <MiniChip
-                  key={value}
-                  active={value === speed}
-                  onClick={() => changeSpeed(value)}
-                >
-                  {value}x
-                </MiniChip>
-              ))}
-            </MobileGroup>
+            {!isLive && (
+              <MobileGroup title="Speed">
+                {SPEEDS.map((value) => (
+                  <MiniChip
+                    key={value}
+                    active={value === speed}
+                    onClick={() => changeSpeed(value)}
+                  >
+                    {value}x
+                  </MiniChip>
+                ))}
+              </MobileGroup>
+            )}
 
             <MobileGroup title="Quality">
               <MiniChip active={currentLevel === -1} onClick={() => changeQuality(-1)}>
@@ -652,48 +791,64 @@ export function Player({
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/65 to-transparent" />
 
         <div className="relative px-2.5 pb-2 sm:px-4 sm:pb-4">
-          <div
-            ref={progressRef}
-            className="relative mb-2 sm:mb-3 h-1.5 cursor-pointer rounded-full bg-white/12"
-            onMouseDown={onProgressDown}
-            onTouchStart={onProgressDown}
-            onMouseMove={(event) =>
-              setHoverProgress(getProgressFromClientX(event.clientX))
-            }
-            onMouseLeave={() => setHoverProgress(null)}
-            role="slider"
-            aria-label="Seek bar"
-            aria-valuemin={0}
-            aria-valuemax={Math.floor(duration || 0)}
-            aria-valuenow={Math.floor(currentTime)}
-          >
-            <div
-              className="absolute inset-y-0 left-0 rounded-full bg-white/16"
-              style={{ width: `${bufferProgress}%` }}
-            />
-            <div
-              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-phantom to-phantom-light"
-              style={{ width: `${progress}%` }}
-            />
-            <div
-              className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-phantom"
-              style={{ left: `${progress}%` }}
-            />
-
-            {hoverProgress !== null && (
+          {hasTimeline ? (
+            <>
               <div
-                className="absolute bottom-full mb-2 -translate-x-1/2 rounded-full bg-black/80 px-2.5 py-1 font-sans text-xs text-white backdrop-blur-sm"
-                style={{ left: `${hoverProgress * 100}%` }}
+                ref={progressRef}
+                className="relative mb-2 h-1.5 cursor-pointer rounded-full bg-white/12 sm:mb-3"
+                onMouseDown={onProgressDown}
+                onTouchStart={onProgressDown}
+                onMouseMove={(event) =>
+                  setHoverProgress(getProgressFromClientX(event.clientX))
+                }
+                onMouseLeave={() => setHoverProgress(null)}
+                role="slider"
+                aria-label="Seek bar"
+                aria-valuemin={0}
+                aria-valuemax={Math.floor(timelineDuration || 0)}
+                aria-valuenow={Math.floor(timelineTime)}
               >
-                {formatTime(hoverProgress * duration)}
-              </div>
-            )}
-          </div>
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-white/16"
+                  style={{ width: `${bufferProgress}%` }}
+                />
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-phantom to-phantom-light"
+                  style={{ width: `${progress}%` }}
+                />
+                <div
+                  className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-phantom"
+                  style={{ left: `${progress}%` }}
+                />
 
-          <div className="mb-1.5 sm:mb-3 flex items-center justify-between gap-3 font-sans text-[10px] sm:text-[11px] uppercase tracking-[0.16em] text-text-secondary">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
+                {hoverProgress !== null && (
+                  <div
+                    className="absolute bottom-full mb-2 -translate-x-1/2 rounded-full bg-black/80 px-2.5 py-1 font-sans text-xs text-white backdrop-blur-sm"
+                    style={{ left: `${hoverProgress * 100}%` }}
+                  >
+                    {useDvrTimeline
+                      ? `-${formatTime(
+                          Math.max(0, liveWindow - hoverProgress * liveWindow)
+                        )}`
+                      : formatTime(hoverProgress * duration)}
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-1.5 flex items-center justify-between gap-3 font-sans text-[10px] uppercase tracking-[0.16em] text-text-secondary sm:mb-3 sm:text-[11px]">
+                <span>{useDvrTimeline ? `-${formatTime(liveLag)}` : formatTime(currentTime)}</span>
+                <span>{useDvrTimeline ? "Live" : formatTime(duration)}</span>
+              </div>
+            </>
+          ) : (
+            <div className="mb-2 flex items-center justify-between gap-3 font-sans text-[10px] uppercase tracking-[0.2em] text-text-secondary sm:mb-3 sm:text-[11px]">
+              <span className="inline-flex items-center gap-2 text-red-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                Live
+              </span>
+              <span>{playing ? "Now playing" : "Ready"}</span>
+            </div>
+          )}
 
           <div className="grid gap-1 sm:gap-2 sm:grid-cols-[auto_auto_1fr_auto] sm:items-center">
             <div className="flex items-center gap-1 sm:gap-2">
@@ -704,14 +859,18 @@ export function Player({
                   <IconPlayerPlayFilled size={20} />
                 )}
               </ControlBtn>
-              <ControlBtn onClick={() => seekBy(-10)} label="Back 10 seconds">
-                <IconChevronLeft size={18} />
-                <span className="font-sans text-[11px]">10</span>
-              </ControlBtn>
-              <ControlBtn onClick={() => seekBy(10)} label="Forward 10 seconds">
-                <span className="font-sans text-[11px]">10</span>
-                <IconChevronRight size={18} />
-              </ControlBtn>
+              {canSeek && (
+                <>
+                  <ControlBtn onClick={() => seekBy(-10)} label="Back 10 seconds">
+                    <IconChevronLeft size={18} />
+                    <span className="font-sans text-[11px]">10</span>
+                  </ControlBtn>
+                  <ControlBtn onClick={() => seekBy(10)} label="Forward 10 seconds">
+                    <span className="font-sans text-[11px]">10</span>
+                    <IconChevronRight size={18} />
+                  </ControlBtn>
+                </>
+              )}
             </div>
 
             <div className="hidden items-center gap-2 sm:flex">
@@ -739,28 +898,35 @@ export function Player({
             <div className="hidden sm:block" />
 
             <div className="hidden sm:flex sm:justify-end sm:gap-2">
-              <div className="relative">
-                <MenuBtn
-                  onClick={() => setMenuOpen(menuOpen === "speed" ? null : "speed")}
-                  label={`Speed ${speed}x`}
-                >
-                  <IconBrandSpeedtest size={16} />
-                  {speed === 1 ? "1x" : `${speed}x`}
+              {!isLive && (
+                <div className="relative">
+                  <MenuBtn
+                    onClick={() => setMenuOpen(menuOpen === "speed" ? null : "speed")}
+                    label={`Speed ${speed}x`}
+                  >
+                    <IconBrandSpeedtest size={16} />
+                    {speed === 1 ? "1x" : `${speed}x`}
+                  </MenuBtn>
+                  {menuOpen === "speed" && (
+                    <DesktopMenu>
+                      {SPEEDS.map((value) => (
+                        <MenuItem
+                          key={value}
+                          active={value === speed}
+                          onClick={() => changeSpeed(value)}
+                        >
+                          {value}x
+                        </MenuItem>
+                      ))}
+                    </DesktopMenu>
+                  )}
+                </div>
+              )}
+              {useDvrTimeline && liveLag > 3 && (
+                <MenuBtn onClick={seekToLive} label="Jump to live">
+                  Live
                 </MenuBtn>
-                {menuOpen === "speed" && (
-                  <DesktopMenu>
-                    {SPEEDS.map((value) => (
-                      <MenuItem
-                        key={value}
-                        active={value === speed}
-                        onClick={() => changeSpeed(value)}
-                      >
-                        {value}x
-                      </MenuItem>
-                    ))}
-                  </DesktopMenu>
-                )}
-              </div>
+              )}
 
               {levels.length > 0 && (
                 <div className="relative">

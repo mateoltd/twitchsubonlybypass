@@ -26,6 +26,23 @@ export function extractVodId(input: string): string | null {
   return null;
 }
 
+export function extractChannelName(input: string): string | null {
+  const trimmed = input.trim().replace(/^@/, "");
+  if (!trimmed) return null;
+
+  if (/^[a-z0-9_]{3,25}$/i.test(trimmed)) return trimmed.toLowerCase();
+
+  try {
+    const url = new URL(trimmed);
+    const firstPath = url.pathname.split("/").filter(Boolean)[0];
+    if (firstPath && /^[a-z0-9_]{3,25}$/i.test(firstPath)) {
+      return firstPath.toLowerCase();
+    }
+  } catch {}
+
+  return null;
+}
+
 export function parseStartTime(value: string | null): number {
   if (!value) return 0;
 
@@ -45,6 +62,10 @@ export function buildVodPath(vodId: string, startTime = 0): string {
 
   const query = params.toString();
   return query ? `/videos/${vodId}?${query}` : `/videos/${vodId}`;
+}
+
+export function buildChannelPath(channel: string): string {
+  return `/${encodeURIComponent(channel.toLowerCase())}`;
 }
 
 export function isCloudFrontUrl(url: string): boolean {

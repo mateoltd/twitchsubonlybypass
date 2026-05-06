@@ -19,10 +19,6 @@ function getConcurrency(): number {
 // First retry is immediate (catches transient CDN hiccups), then back off.
 const RETRY_DELAYS_MS = [0, 400, 1200];
 
-function proxyUrl(url: string): string {
-  return `/api/proxy?url=${encodeURIComponent(url)}`;
-}
-
 // Returns a Blob rather than ArrayBuffer.
 // On mobile WebKit (iOS Safari, Chrome for Android) Blob objects are backed by
 // a temporary file on disk, so individual segments never pile up in JS heap.
@@ -52,7 +48,6 @@ interface ParsedPlaylist {
 }
 
 function parsePlaylist(text: string, playlistUrl: string): ParsedPlaylist {
-  const base = playlistUrl.substring(0, playlistUrl.lastIndexOf("/") + 1);
   const lines = text.split("\n");
   const segmentUrls: string[] = [];
   let initSegmentUrl: string | null = null;
@@ -63,7 +58,7 @@ function parsePlaylist(text: string, playlistUrl: string): ParsedPlaylist {
     if (line.startsWith("#EXT-X-MAP:")) {
       const m = line.match(/URI="([^"]+)"/);
       if (m) {
-        initSegmentUrl = base + m[1];
+        initSegmentUrl = new URL(m[1], playlistUrl).toString();
         extension = "mp4";
       }
     }
@@ -71,7 +66,7 @@ function parsePlaylist(text: string, playlistUrl: string): ParsedPlaylist {
       for (let j = i + 1; j < lines.length; j++) {
         const seg = lines[j].trim();
         if (seg && !seg.startsWith("#")) {
-          segmentUrls.push(base + seg);
+          segmentUrls.push(new URL(seg, playlistUrl).toString());
           i = j;
           break;
         }
@@ -127,7 +122,7 @@ async function fetchParallel(
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       const idx = cursor++;
       if (idx >= urls.length) return;
-      const blob = await fetchWithRetry(proxyUrl(urls[idx]), signal);
+      const blob = await fetchWithRetry(urls[idx], signal);
       writer.push(idx, blob);
       bytes += blob.size;
       onProgress(++downloaded, bytes);
@@ -189,7 +184,7 @@ async function downloadWithFSA(
 
   try {
     if (playlist.initSegmentUrl) {
-      const blob = await fetchWithRetry(proxyUrl(playlist.initSegmentUrl), signal);
+      const blob = await fetchWithRetry(playlist.initSegmentUrl, signal);
       await writable.write(blob);
       bytes += blob.size;
       downloaded++;
@@ -232,7 +227,7 @@ async function downloadBlobs(
   let bytes = 0;
 
   if (playlist.initSegmentUrl) {
-    const blob = await fetchWithRetry(proxyUrl(playlist.initSegmentUrl), signal);
+    const blob = await fetchWithRetry(playlist.initSegmentUrl, signal);
     parts.push(blob);
     bytes += blob.size;
     downloaded++;
@@ -267,7 +262,7 @@ export async function downloadVod(
 ): Promise<void> {
   onProgress({ phase: "fetching", downloaded: 0, total: 0, bytes: 0 });
 
-  const resp = await fetch(proxyUrl(playlistUrl), { signal });
+  const resp = await fetch(playlistUrl, { signal });
   if (!resp.ok) throw new Error(`Failed to fetch playlist: ${resp.status}`);
   const playlist = parsePlaylist(await resp.text(), playlistUrl);
 

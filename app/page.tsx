@@ -6,16 +6,16 @@ import { isDebugEnabled } from "@/lib/debug";
 import { buildMetadata, getBaseUrl, siteConfig } from "@/lib/seo";
 
 export const metadata = buildMetadata({
-  title: "Watch & Download Sub-Only Twitch VODs Without Restrictions",
+  title: "Twitch Live and VOD Client",
   description:
-    "Watch and download any Twitch VOD without restrictions, including sub-only content. A modern, fast, and secure web player and downloader with adaptive quality streaming.",
+    "Search Twitch channels, watch live streams, browse recent VODs, and resume video playback in a modern web player.",
   path: "/",
   keywords: [
-    "watch twitch vods online",
-    "twitch sub-only vod viewer",
-    "twitch vod streaming tool",
-    "download twitch vods online",
-    "twitch vod downloader free",
+    "twitch client",
+    "watch twitch live",
+    "watch twitch vods",
+    "twitch channel search",
+    "twitch vod player",
   ],
 });
 
@@ -65,7 +65,7 @@ export default function Home() {
               name: "What can Phantom Twitch do?",
               acceptedAnswer: {
                 "@type": "Answer",
-                text: "Phantom Twitch lets you watch and download any Twitch VOD without restrictions, including sub-only content, in a modern web player with adaptive quality streaming and download options.",
+                text: "Phantom Twitch lets you search Twitch channels, watch live streams, browse recent VODs, and play Twitch videos in a modern adaptive web player.",
               },
             },
             {

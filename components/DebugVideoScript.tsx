@@ -4,7 +4,7 @@ const DEBUG_SCRIPT = `
 (() => {
   const prefix = "[phantom-debug]";
   const watchedVideoElements = new WeakSet();
-  const monitoredRequests = ["/api/vod/resolve", "/api/vod/master.m3u8", "/api/vod/media.m3u8", "/api/proxy"];
+  const monitoredRequests = ["/api/vod/resolve", "/api/vod/master.m3u8", "/api/vod/media.m3u8", "/api/channel/resolve", "/api/channel/search", "/api/live/master.m3u8", "/api/live/media.m3u8"];
 
   const log = (message, details) => {
     if (details !== undefined) {

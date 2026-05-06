@@ -4,11 +4,12 @@ export const siteConfig = {
   name: "Phantom Twitch",
   shortName: "Phantom",
   description:
-    "Watch and download any Twitch VOD without restrictions, including sub-only content. A modern, fast, and secure web player and downloader for Twitch VODs with adaptive quality.",
+    "Search Twitch channels, watch live streams, browse recent VODs, and resume playback in a modern adaptive Twitch client.",
   creator: "mateoltd",
   publisher: "Phantom Research",
   keywords: [
-    "twitch sub-only bypass",
+    "twitch client",
+    "watch twitch live",
     "watch twitch vods",
     "twitch vod player",
     "phantom twitch",

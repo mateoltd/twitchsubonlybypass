@@ -39,15 +39,20 @@ export async function GET(request: NextRequest) {
       quality,
       playlistUrl: selectedQuality.playlistUrl,
     });
+    const playlistText = await upstream.text();
+    const isCompleteVod = playlistText.includes("#EXT-X-ENDLIST");
     const rewritten = rewriteMediaPlaylist(
-      await upstream.text(),
-      selectedQuality.playlistUrl
+      playlistText,
+      selectedQuality.playlistUrl,
+      !isCompleteVod
     );
 
     return new Response(rewritten, {
       headers: {
         "Content-Type": "application/vnd.apple.mpegurl",
-        "Cache-Control": "no-store",
+        "Cache-Control": isCompleteVod
+          ? "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
+          : "no-store",
       },
     });
   } catch {
