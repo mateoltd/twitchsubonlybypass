@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Sora } from "next/font/google";
+import { JetBrains_Mono, Sora, Geist } from "next/font/google";
 import { getBaseUrl, siteConfig } from "@/lib/seo";
 import "./globals.css";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const sora = Sora({
   variable: "--font-sora",
@@ -68,7 +71,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sora.variable} ${jetbrainsMono.variable}`}
+      className={cn(sora.variable, jetbrainsMono.variable, "font-sans", geist.variable)}
     >
       <body className="font-sans antialiased">{children}</body>
     </html>

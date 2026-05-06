@@ -38,6 +38,40 @@ interface PlayerProps {
 
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 
+function pickInitialLevel(
+  levels: { name: string; index: number }[],
+  sourceLevels: Hls["levels"]
+) {
+  if (levels.length === 0) return -1;
+
+  return levels.reduce((best, current) => {
+    const bestLevel = sourceLevels[best.index];
+    const currentLevel = sourceLevels[current.index];
+    const bestBitrate = bestLevel?.bitrate ?? bestLevel?.maxBitrate ?? 0;
+    const currentBitrate = currentLevel?.bitrate ?? currentLevel?.maxBitrate ?? 0;
+    return currentBitrate > bestBitrate ? current : best;
+  }, levels[0]).index;
+}
+
+function labelHlsLevel(level: Hls["levels"][number]) {
+  const attrs = level.attrs as Record<string, string | undefined> | undefined;
+  const twitchName =
+    attrs?.["STABLE-VARIANT-ID"] ??
+    attrs?.["IVS-NAME"] ??
+    attrs?.VIDEO ??
+    level.name;
+
+  if (twitchName) {
+    if (twitchName === "chunked") return "Source";
+    return twitchName;
+  }
+
+  const frameRate = level.frameRate ? Math.round(level.frameRate) : 0;
+  return level.height
+    ? `${level.height}p${frameRate >= 50 ? frameRate : ""}`
+    : "Quality";
+}
+
 export function Player({
   src,
   qualities,
@@ -173,16 +207,17 @@ export function Player({
 
     const hls = new Hls({
       enableWorker: true,
-      lowLatencyMode: isLive,
+      lowLatencyMode: isLive && !dvrMode,
       capLevelToPlayerSize: true,
-      startLevel: isLive ? 0 : -1,
-      backBufferLength: isLive ? 15 : 30,
-      maxBufferLength: isLive ? 8 : 20,
-      maxMaxBufferLength: isLive ? 20 : 40,
+      startLevel: -1,
+      autoStartLoad: !(isLive || dvrMode),
+      backBufferLength: isLive && !dvrMode ? 15 : 30,
+      maxBufferLength: isLive && !dvrMode ? 8 : 30,
+      maxMaxBufferLength: isLive && !dvrMode ? 20 : 60,
       manifestLoadingMaxRetry: 2,
       levelLoadingMaxRetry: 3,
       fragLoadingMaxRetry: 3,
-      capLevelOnFPSDrop: true,
+      capLevelOnFPSDrop: isLive && !dvrMode,
       renderTextTracksNatively: false,
     });
     hlsRef.current = hls;
@@ -194,25 +229,30 @@ export function Player({
         MediaSource.isTypeSupported('video/mp4; codecs="hev1.1.6.L93.B0"');
 
       const filteredLevels = sourceLevels
-        .map((level, index) => {
-          const quality = qualities[index];
-          if (quality?.codec?.startsWith("hev1") && !hevcSupported) return null;
-          const frameRate = level.frameRate ? Math.round(level.frameRate) : 0;
-          const fallbackName = level.height
-            ? `${level.height}p${frameRate >= 50 ? frameRate : ""}`
-            : level.name || `Level ${index + 1}`;
-          return { name: quality?.name ?? fallbackName, index };
+        .map((level) => {
+          const index = hls.levels.indexOf(level);
+          const levelIndex = index >= 0 ? index : sourceLevels.indexOf(level);
+          if (level.codecs?.startsWith("hev1") && !hevcSupported) return null;
+          return { name: labelHlsLevel(level), index: levelIndex };
         })
         .filter((level): level is NonNullable<typeof level> => level !== null);
 
       setLevels(filteredLevels);
       levelsSyncedRef.current = filteredLevels.length > 0;
-      if (isLive && filteredLevels.length > 0) {
-        const firstLevel = filteredLevels[0].index;
+      if ((isLive || dvrMode) && filteredLevels.length > 0) {
+        const actualLevels = hls.levels.length > 0 ? hls.levels : sourceLevels;
+        const firstLevel = pickInitialLevel(filteredLevels, actualLevels);
         hls.currentLevel = firstLevel;
         hls.nextLevel = firstLevel;
         hls.loadLevel = firstLevel;
+        hls.autoLevelCapping = -1;
         setCurrentLevel(firstLevel);
+        if (debugVideo) {
+          console.info("[phantom-hls] selected initial level", {
+            level: firstLevel,
+            levelInfo: hls.levels[firstLevel],
+          });
+        }
       } else {
         setCurrentLevel(-1);
       }
@@ -233,6 +273,9 @@ export function Player({
         });
       }
       syncLevels(data.levels.length > 0 ? data.levels : hls.levels);
+      if (isLive || dvrMode) {
+        hls.startLoad(startTime > 0 ? startTime : -1);
+      }
       if (!isLive && startTime > 0) {
         video.currentTime = startTime;
         syncDisplayedTime(startTime);
@@ -494,11 +537,22 @@ export function Player({
 
   const changeQuality = useCallback((level: number) => {
     if (hlsRef.current) {
-      hlsRef.current.currentLevel = level;
+      const hls = hlsRef.current;
+      const video = videoRef.current;
+      hls.currentLevel = level;
+      hls.nextLevel = level;
+      hls.loadLevel = level;
       setCurrentLevel(level);
+
+      if (dvrMode && video && level >= 0) {
+        const resumeAt = video.currentTime;
+        hls.stopLoad();
+        hls.startLoad(resumeAt);
+        video.currentTime = resumeAt;
+      }
     }
     setMenuOpen(null);
-  }, []);
+  }, [dvrMode]);
 
   const getProgressFromClientX = useCallback((clientX: number) => {
     const bar = progressRef.current;
