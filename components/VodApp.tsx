@@ -39,6 +39,8 @@ interface Quality {
 interface VodData {
   vodId: string;
   channel: string;
+  channelDisplayName?: string;
+  channelProfileImageURL?: string;
   title?: string;
   isLiveArchive?: boolean;
   broadcastType: string;
@@ -560,6 +562,8 @@ function VideoView({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <VodInfo
           channel={vodData.channel}
+          channelDisplayName={vodData.channelDisplayName}
+          channelProfileImageURL={vodData.channelProfileImageURL}
           broadcastType={vodData.broadcastType}
           title={vodData.title}
         />

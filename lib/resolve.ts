@@ -1,4 +1,5 @@
-import { fetchVodMetadata, fetchVodPlaybackUrl } from "./twitch";
+import { fetchChannel, fetchVodMetadata, fetchVodPlaybackUrl } from "./twitch";
+import type { TwitchChannelData, TwitchVideoData } from "./twitch";
 import { extractUrlInfo, buildPlaylistUrl, VodUrlInfo } from "./url-builder";
 import { probeQuality } from "./quality";
 import { defaultResolutions } from "./resolutions";
@@ -8,6 +9,8 @@ import { ResolvedQuality } from "./validation";
 export interface CachedVodData {
   vodId: string;
   channel: string;
+  channelDisplayName?: string;
+  channelProfileImageURL?: string;
   title?: string;
   isLiveArchive?: boolean;
   broadcastType: string;
@@ -17,11 +20,12 @@ export interface CachedVodData {
 }
 
 export async function resolveVod(vodId: string): Promise<CachedVodData> {
-  const cacheKey = `vod:v2:${vodId}`;
+  const cacheKey = `vod:v3:${vodId}`;
   const cached = cacheGet<CachedVodData>(cacheKey);
   if (cached) return cached;
 
   const vodData = await fetchVodMetadata(vodId);
+  const channelData = await fetchChannel(vodData.owner.login);
   const urlInfo = extractUrlInfo(vodData);
   const createdAt = new Date(vodData.createdAt).getTime();
   const elapsedMs = Date.now() - createdAt;
@@ -38,16 +42,14 @@ export async function resolveVod(vodId: string): Promise<CachedVodData> {
   if (isRecentArchive) {
     const fallbackQualities = await resolveVodFromUsher(vodId);
     if (fallbackQualities.length > 0) {
-      const data: CachedVodData = {
+      const data = createCachedVodData({
         vodId,
-        channel: vodData.owner.login,
-        title: vodData.title,
+        vodData,
+        channelData,
         isLiveArchive,
-        broadcastType: urlInfo.broadcastType,
-        createdAt: vodData.createdAt,
         urlInfo,
         qualities: fallbackQualities,
-      };
+      });
 
       cacheSet(cacheKey, data, 30_000);
       return data;
@@ -87,25 +89,53 @@ export async function resolveVod(vodId: string): Promise<CachedVodData> {
   if (qualities.length === 0) {
     const fallbackQualities = await resolveVodFromUsher(vodId);
     if (fallbackQualities.length > 0) {
-      const data: CachedVodData = {
+      const data = createCachedVodData({
         vodId,
-        channel: vodData.owner.login,
-        title: vodData.title,
+        vodData,
+        channelData,
         isLiveArchive,
-        broadcastType: urlInfo.broadcastType,
-        createdAt: vodData.createdAt,
         urlInfo,
         qualities: fallbackQualities,
-      };
+      });
 
       cacheSet(cacheKey, data);
       return data;
     }
   }
 
-  const data: CachedVodData = {
+  const data = createCachedVodData({
     vodId,
-    channel: vodData.owner.login,
+    vodData,
+    channelData,
+    isLiveArchive,
+    urlInfo,
+    qualities,
+  });
+
+  cacheSet(cacheKey, data);
+  return data;
+}
+
+function createCachedVodData({
+  vodId,
+  vodData,
+  channelData,
+  isLiveArchive,
+  urlInfo,
+  qualities,
+}: {
+  vodId: string;
+  vodData: TwitchVideoData;
+  channelData: TwitchChannelData;
+  isLiveArchive: boolean;
+  urlInfo: VodUrlInfo;
+  qualities: ResolvedQuality[];
+}): CachedVodData {
+  return {
+    vodId,
+    channel: channelData.login,
+    channelDisplayName: channelData.displayName,
+    channelProfileImageURL: channelData.profileImageURL,
     title: vodData.title,
     isLiveArchive,
     broadcastType: urlInfo.broadcastType,
@@ -113,9 +143,6 @@ export async function resolveVod(vodId: string): Promise<CachedVodData> {
     urlInfo,
     qualities,
   };
-
-  cacheSet(cacheKey, data);
-  return data;
 }
 
 async function resolveVodFromUsher(vodId: string): Promise<ResolvedQuality[]> {

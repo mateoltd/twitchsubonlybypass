@@ -8,6 +8,8 @@ function createResolveResponse(data: Awaited<ReturnType<typeof resolveVod>>) {
     {
       vodId: data.vodId,
       channel: data.channel,
+      channelDisplayName: data.channelDisplayName,
+      channelProfileImageURL: data.channelProfileImageURL,
       title: data.title,
       isLiveArchive: data.isLiveArchive,
       broadcastType: data.broadcastType,

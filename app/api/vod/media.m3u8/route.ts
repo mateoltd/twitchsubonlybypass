@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const rewritten = rewriteMediaPlaylist(
       playlistText,
       selectedQuality.playlistUrl,
-      !isCompleteVod
+      true
     );
 
     return new Response(rewritten, {
