@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  FormEvent,
   memo,
   useCallback,
   useEffect,
@@ -9,9 +8,9 @@ import {
   useRef,
   useState,
 } from "react";
+import type { ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
-  IconArrowRight,
   IconBroadcast,
   IconClock,
   IconEye,
@@ -19,7 +18,6 @@ import {
   IconMessageCircle,
   IconMinimize,
   IconRefresh,
-  IconSearch,
   IconVideo,
 } from "@tabler/icons-react";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
@@ -29,13 +27,10 @@ import { Switch } from "@/components/ui/switch";
 import { DownloadButton } from "@/components/DownloadButton";
 import { ShareButton } from "@/components/ShareButton";
 import { VodInfo } from "@/components/VodInfo";
-import { LogoMark } from "@/components/Logo";
 import { formatTime } from "@/lib/format";
 import {
   buildChannelPath,
   buildVodPath,
-  extractChannelName,
-  extractVodId,
   parseStartTime,
 } from "@/lib/validation";
 
@@ -89,18 +84,6 @@ interface ChannelData {
   videos: ChannelVideo[];
 }
 
-interface SearchResult {
-  id: string;
-  login: string;
-  displayName: string;
-  description: string;
-  profileImageURL: string;
-  isLive: boolean;
-  title?: string;
-  gameName?: string;
-  viewersCount?: number;
-}
-
 type AppState = "home" | "loading" | "video" | "channel" | "error";
 type ChatMode = "fast" | "slow";
 
@@ -143,32 +126,6 @@ function storePlayback(vodId: string, time: number) {
   } catch {}
 }
 
-function Navbar({
-  onSearch,
-  searching,
-}: {
-  onSearch: (value: string) => void;
-  searching: boolean;
-}) {
-  return (
-    <nav className="relative z-20 grid min-h-16 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-8">
-      <a href="/" className="flex items-center gap-2 justify-self-start">
-        <LogoMark size={18} className="text-text-secondary" />
-        <span className="hidden text-[13px] font-semibold tracking-tight text-text-secondary sm:inline">
-          Phantom
-        </span>
-      </a>
-      <div className="min-w-0 justify-self-center w-full max-w-[41rem]">
-        <SearchBox onSubmit={onSearch} searching={searching} compact />
-      </div>
-      <div aria-hidden="true" className="invisible flex items-center gap-2 justify-self-end">
-        <LogoMark size={18} />
-        <span className="hidden text-[13px] font-semibold sm:inline">Phantom</span>
-      </div>
-    </nav>
-  );
-}
-
 export function VodApp() {
   const params = useParams<{ videoId?: string; channelName?: string }>();
   const router = useRouter();
@@ -190,9 +147,6 @@ export function VodApp() {
   const [masterUrl, setMasterUrl] = useState("");
   const [startTime, setStartTime] = useState(routeStartTime);
   const [playerTime, setPlayerTime] = useState(0);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState("");
 
   const resetPlayback = useCallback(() => {
     setVodData(null);
@@ -286,64 +240,6 @@ export function VodApp() {
     setState("home");
   }, [loadChannel, loadVod, resetPlayback, routeChannel, routeStartTime, routeVodId]);
 
-  const navigateFromInput = useCallback(
-    (input: string) => {
-      const vodId = extractVodId(input);
-      if (vodId) {
-        router.push(buildVodPath(vodId));
-        return;
-      }
-
-      const channel = extractChannelName(input);
-      if (channel) {
-        router.push(buildChannelPath(channel));
-        return;
-      }
-
-      setError("Enter a Twitch channel, VOD ID, or Twitch URL");
-      setState("error");
-    },
-    [router]
-  );
-
-  const handleSearch = useCallback(async (query: string) => {
-    const vodId = extractVodId(query);
-    if (vodId) {
-      router.push(buildVodPath(vodId));
-      return;
-    }
-
-    setSearching(true);
-    setSearchError("");
-
-    try {
-      const resp = await fetch(`/api/channel/search?q=${encodeURIComponent(query)}`);
-      if (!resp.ok) {
-        const data = await resp.json();
-        throw new Error(data.error || `Search failed: ${resp.status}`);
-      }
-
-      const data: { results: SearchResult[] } = await resp.json();
-      setSearchResults(data.results);
-
-      const exact = data.results.find(
-        (result) => result.login.toLowerCase() === query.toLowerCase()
-      );
-      if (exact) {
-        router.push(buildChannelPath(exact.login));
-      }
-    } catch (err) {
-      const channel = extractChannelName(query);
-      if (channel) {
-        router.push(buildChannelPath(channel));
-        return;
-      }
-      setSearchError(err instanceof Error ? err.message : "Search failed");
-    } finally {
-      setSearching(false);
-    }
-  }, [router]);
-
   const onVodTimeUpdate = useCallback(
     (time: number) => {
       setPlayerTime(time);
@@ -356,13 +252,10 @@ export function VodApp() {
 
   return (
     <main className="relative min-h-screen">
-      <Navbar onSearch={handleSearch} searching={searching} />
-
       {state === "home" && (
         <HomeView
-          onSubmit={navigateFromInput}
-          searchResults={searchResults}
-          searchError={searchError}
+          onChannel={(channel) => router.push(buildChannelPath(channel))}
+          onVideo={(vodId) => router.push(buildVodPath(vodId))}
         />
       )}
 
@@ -396,85 +289,59 @@ export function VodApp() {
 }
 
 function HomeView({
-  onSubmit,
-  searchResults,
-  searchError,
+  onChannel,
+  onVideo,
 }: {
-  onSubmit: (value: string) => void;
-  searchResults: SearchResult[];
-  searchError: string;
+  onChannel: (channel: string) => void;
+  onVideo: (vodId: string) => void;
 }) {
   return (
     <div className="relative mx-auto flex min-h-[calc(100vh-72px)] w-full max-w-5xl flex-col px-4 pb-6 sm:px-6 lg:px-8">
-      <section className="flex flex-1 flex-col items-center pt-16 sm:pt-24">
+      <section className="flex flex-1 flex-col items-center pt-14 sm:pt-24">
         <div className="w-full animate-fade-in">
           <div className="flex flex-col items-center">
-            <h1 className="text-center text-[2.5rem] font-bold leading-[1] tracking-[-0.035em] text-text sm:text-5xl lg:text-[4.5rem]">
+            <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary/55">
+              Phantom Twitch
+            </p>
+            <h1 className="text-center text-[2.8rem] font-bold leading-[0.95] text-text sm:text-6xl lg:text-[5rem]">
               Watch Twitch
             </h1>
-            <h2 className="mt-1 text-center text-[2.5rem] font-bold leading-[1] tracking-[-0.035em] text-text-tertiary sm:text-5xl lg:text-[4.5rem]">
+            <h2 className="mt-2 text-center text-[2.8rem] font-bold leading-[0.95] text-text-tertiary sm:text-6xl lg:text-[5rem]">
               Live & VODs
             </h2>
           </div>
-          <p className="mx-auto mt-6 max-w-xl text-center text-[14px] leading-6 text-text-tertiary sm:text-[15px]">
-            Search for a channel, paste a VOD URL, or enter a video ID to start watching.
+          <p className="mx-auto mt-7 max-w-lg text-center text-[14px] leading-6 text-text-tertiary sm:text-[15px]">
+            Use the search bar for a channel, Twitch URL, or video ID.
           </p>
-          {searchError && (
-            <p className="mt-8 text-center text-sm text-error">{searchError}</p>
-          )}
         </div>
 
-        <div className="mx-auto mt-12 w-full max-w-2xl animate-fade-in sm:mt-14">
-          <div className="mb-2 px-3">
-            <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-tertiary/60">
-              Search results
-            </span>
+        <section className="mt-12 w-full max-w-3xl animate-slide-up">
+          <div className="grid border-y border-white/[0.055] sm:grid-cols-2 sm:divide-x sm:divide-white/[0.055]">
+            <HomeAction
+              icon={<IconBroadcast size={16} />}
+              title="Open Twitch channel"
+              meta="/twitch"
+              onClick={() => onChannel("twitch")}
+            />
+            <HomeAction
+              icon={<IconVideo size={16} />}
+              title="Open VOD"
+              meta="Paste a URL or ID"
+              onClick={focusGlobalSearch}
+            />
           </div>
-          {searchResults.length > 0 ? (
-            <div className="space-y-px">
-              {searchResults.slice(0, 8).map((result, index) => (
-                <a
-                  key={result.id}
-                  href={buildChannelPath(result.login)}
-                  className="stagger-child group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-white/[0.03] active:bg-white/[0.05]"
-                  style={{ animationDelay: `${0.03 * index}s` }}
-                >
-                  <img
-                    src={result.profileImageURL}
-                    alt=""
-                    className="h-8 w-8 shrink-0 rounded-md object-cover"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-[13px] font-medium text-text-secondary">
-                        {result.displayName}
-                      </span>
-                      {result.isLive && <LivePill compact />}
-                    </div>
-                    <p className="truncate text-[10px] text-text-tertiary/60">
-                      {result.title || result.description || `@${result.login}`}
-                    </p>
-                  </div>
-                  <IconArrowRight
-                    size={12}
-                    stroke={2.5}
-                    className="shrink-0 text-text-tertiary/30 transition-colors group-hover:text-text-secondary"
-                  />
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-white/[0.04] bg-white/[0.02] px-4 py-6 text-center">
-              <IconSearch className="mx-auto mb-2 text-text-tertiary/50" size={20} />
-              <p className="text-[12px] text-text-tertiary/60">
-                Results will appear here after searching.
-              </p>
-            </div>
-          )}
+        </section>
+
+        <div className="mt-7 flex w-full max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-2 font-mono text-[11px] text-text-tertiary/55">
+          <span>twitch.tv/videos/...</span>
+          <span className="hidden h-1 w-1 rounded-full bg-text-tertiary/25 sm:block" />
+          <span>2343894741</span>
+          <span className="hidden h-1 w-1 rounded-full bg-text-tertiary/25 sm:block" />
+          <span>@channel</span>
         </div>
 
         <div className="w-full">
-          <History onSelect={onSubmit} />
+          <History onSelect={onVideo} />
         </div>
       </section>
 
@@ -483,74 +350,39 @@ function HomeView({
   );
 }
 
-function SearchBox({
-  onSubmit,
-  searching,
-  compact = false,
+function focusGlobalSearch() {
+  document.getElementById("global-search-input")?.focus();
+}
+
+function HomeAction({
+  icon,
+  title,
+  meta,
+  onClick,
 }: {
-  onSubmit: (value: string) => void;
-  searching: boolean;
-  compact?: boolean;
+  icon: ReactNode;
+  title: string;
+  meta: string;
+  onClick: () => void;
 }) {
-  const [value, setValue] = useState("");
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    if (value.trim()) onSubmit(value.trim());
-  };
-
-  if (compact) {
-    return (
-      <form
-        onSubmit={submit}
-        className="flex h-10 w-full min-w-0 items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.04] px-2.5 font-sans animate-fade-in"
-      >
-        <IconSearch className="shrink-0 text-text-tertiary" size={15} />
-        <input
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          aria-label="Search Twitch channel or VOD"
-          placeholder="Search channel, paste VOD URL, or video ID..."
-          disabled={searching}
-          className="min-w-0 flex-1 bg-transparent py-1 text-[13px] font-medium tracking-normal text-text outline-none placeholder:font-normal placeholder:text-text-tertiary disabled:opacity-50"
-        />
-        <button
-          type="submit"
-          disabled={!value.trim() || searching}
-          className="flex h-7 shrink-0 items-center justify-center rounded-lg bg-phantom px-3 text-[12px] font-semibold text-white transition-all hover:bg-phantom-dark active:scale-95 disabled:opacity-30"
-        >
-          Go
-        </button>
-      </form>
-    );
-  }
-
   return (
-    <form onSubmit={submit} className="mx-auto mt-10 max-w-2xl sm:mt-12">
-      <div className="group flex items-center border-b border-white/[0.08] pb-5 transition-colors focus-within:border-white/20 sm:pb-6">
-        <div className="relative min-w-0 flex-1">
-          <input
-            type="text"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            placeholder="Search channel, paste VOD URL, or video ID..."
-            autoFocus
-            className="w-full bg-transparent py-1 text-2xl font-medium tracking-tight text-text placeholder:text-text-tertiary/90 outline-none sm:text-4xl"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={!value.trim() || searching}
-          className="ml-3 flex h-10 shrink-0 items-center justify-center rounded-full bg-phantom px-5 text-[13px] font-semibold text-white transition-all hover:bg-phantom-dark active:scale-95 disabled:opacity-20 sm:h-12 sm:px-6"
-        >
-          {searching ? "Searching" : "Go"}
-        </button>
-      </div>
-      <p className="mt-3 text-center text-[12px] text-text-tertiary/50">
-        Search channel, paste a Twitch VOD link, or enter a video ID
-      </p>
-    </form>
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.025] active:bg-white/[0.045] sm:px-5 sm:py-4"
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center text-phantom-light">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[13px] font-semibold text-text sm:text-sm">
+          {title}
+        </span>
+        <span className="mt-1 block truncate font-mono text-[11px] text-text-tertiary/60">
+          {meta}
+        </span>
+      </span>
+    </button>
   );
 }
 function LoadingView() {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Sora, Geist } from "next/font/google";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { getBaseUrl, siteConfig } from "@/lib/seo";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -73,7 +74,10 @@ export default function RootLayout({
       lang="en"
       className={cn(sora.variable, jetbrainsMono.variable, "font-sans", geist.variable)}
     >
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <GlobalSearch />
+        {children}
+      </body>
     </html>
   );
 }

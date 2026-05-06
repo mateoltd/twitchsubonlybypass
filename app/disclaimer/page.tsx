@@ -1,7 +1,4 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
-import { IconArrowLeft } from "@tabler/icons-react";
-import { LogoMark } from "@/components/Logo";
 import { StructuredData } from "@/components/structured-data";
 import { buildMetadata, getBaseUrl, siteConfig } from "@/lib/seo";
 
@@ -12,26 +9,6 @@ export const metadata = buildMetadata({
   path: "/disclaimer",
   keywords: ["legal disclaimer", "copyright notice", "terms of use"],
 });
-
-function Navbar() {
-  return (
-    <nav className="flex items-center justify-between px-5 py-4 sm:px-8 sm:py-5">
-      <Link
-        href="/"
-        className="flex items-center gap-1.5 text-[13px] font-medium text-text-tertiary transition-colors hover:text-text-secondary active:scale-95"
-      >
-        <IconArrowLeft size={14} stroke={2} />
-        Back
-      </Link>
-      <Link href="/" className="flex items-center gap-2">
-        <LogoMark size={18} className="text-text-secondary" />
-        <span className="text-[13px] font-semibold tracking-tight text-text-secondary">
-          Phantom
-        </span>
-      </Link>
-    </nav>
-  );
-}
 
 function Section({
   title,
@@ -67,8 +44,6 @@ export default function DisclaimerPage() {
           url: pageUrl,
         }}
       />
-
-      <Navbar />
 
       <div className="mx-auto max-w-3xl px-5 pb-16 pt-4 sm:px-6 lg:px-8">
         <header>
